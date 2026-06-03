@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="nl" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Strain Showcase</title>
+
+<!-- ============================================================
+     COFFEESHOP STRAIN SHOWCASE — self-contained kiosk slideshow
+     Portrait-first (9:16), adaptive to landscape. Runs offline by
+     just opening this file. All data lives in the STRAINS array
+     near the bottom — edit there to add / reorder / swap photos.
+     ============================================================ -->
+
+<style>
+/* ---------- Brand fonts (self-hosted, from holigram.nl) ---------- */
+@font-face{font-family:'Ubuntu';src:url('assets/fonts/ubuntu/ubuntu-light.woff2') format('woff2');font-weight:300;font-display:swap}
+@font-face{font-family:'Ubuntu';src:url('assets/fonts/ubuntu/ubuntu-regular.woff2') format('woff2');font-weight:400;font-display:swap}
+@font-face{font-family:'Ubuntu';src:url('assets/fonts/ubuntu/ubuntu-medium.woff2') format('woff2');font-weight:500;font-display:swap}
+@font-face{font-family:'Ubuntu';src:url('assets/fonts/ubuntu/ubuntu-bold.woff2') format('woff2');font-weight:700;font-display:swap}
+@font-face{font-family:'Larken';src:url('assets/fonts/larken/larken-regular.woff2') format('woff2');font-weight:400;font-display:swap}
+@font-face{font-family:'Larken';src:url('assets/fonts/larken/larken-medium.woff2') format('woff2');font-weight:500;font-display:swap}
+@font-face{font-family:'Larken';src:url('assets/fonts/larken/larken-bold.woff2') format('woff2');font-weight:700;font-display:swap}
+@font-face{font-family:'Larken';src:url('assets/fonts/larken/larken-black.woff2') format('woff2');font-weight:900;font-display:swap}
+@font-face{font-family:'Larken';src:url('assets/fonts/larken/larken-italic.woff2') format('woff2');font-weight:400;font-style:italic;font-display:swap}
+@font-face{font-family:'Kabal';src:url('assets/fonts/kabal/kabal-regular.woff2') format('woff2');font-weight:400;font-display:swap}
+
+/* ---------- Tokens ---------- */
+:root{
+  --orange:#BE541C; --orange-bright:#E5631E; --orange-soft:#F2A876; --orange-tint:#FDF1E8;
+  --green:#294634; --green-deep:#14211A; --green-mid:#478367; --green-tint:#E8F0EA;
+  --cream:#F3EEE6; --paper:#FAF7F2; --ink:#0F0F0E;
+  --font-body:'Ubuntu',-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+  --font-display:'Larken','Source Serif 4',Georgia,serif;
+  --font-brand:'Kabal','Ubuntu',sans-serif;
+  --font-mono:ui-monospace,'SF Mono','JetBrains Mono','IBM Plex Mono',Menlo,monospace;
+
+  --dur-slide:9000ms;          /* set from JS CONFIG too */
+  --ease:cubic-bezier(.16,1,.3,1);
+
+  /* themed (overridden per data-theme) */
+  --bg:#0a130f; --fg:var(--cream); --fg-mute:rgba(243,238,230,.62); --fg-faint:rgba(243,238,230,.34);
+  --accent:var(--orange-bright); --active-accent:var(--orange-bright); --mark:var(--orange); --mark-opacity:.065; --rule:rgba(243,238,230,.14);
+  --scrim:rgba(8,17,12,1); --scrim-0:rgba(8,17,12,0);
+  --chip-bg:rgba(243,238,230,.07); --spark:rgba(255,255,255,.92);
+}
+html[data-theme='dark']{
+  --bg:#0a130f; --fg:var(--cream); --fg-mute:rgba(243,238,230,.62); --fg-faint:rgba(243,238,230,.34);
+  --accent:var(--orange-bright); --mark:var(--orange); --mark-opacity:.12; --rule:rgba(243,238,230,.13);
+  --scrim:#0a130f; --scrim-0:rgba(10,19,15,0); --chip-bg:rgba(243,238,230,.07); --spark:rgba(255,255,255,.92);
+  --stage:radial-gradient(120% 90% at 50% 32%, #1d3528 0%, #122119 46%, #09120e 100%);
+}
+html[data-theme='light']{
+  --bg:#F3EEE6; --fg:#15231b; --fg-mute:rgba(20,33,26,.66); --fg-faint:rgba(20,33,26,.40);
+  --accent:var(--orange); --mark:var(--green); --mark-opacity:.05; --rule:rgba(20,33,26,.14);
+  --scrim:#e9e0d0; --scrim-0:rgba(233,224,208,0); --chip-bg:rgba(20,33,26,.06); --spark:rgba(150,120,70,.5);
+  --stage:radial-gradient(125% 96% at 50% 26%, #f1eadd 0%, #e8dfcf 50%, #d9ccb6 100%);
+}
+
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;background:#000;overflow:hidden}
+body{
+  font-family:var(--font-body);color:var(--fg);
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+  cursor:none; /* kiosk: hidden cursor, shown on move */
+}
+body.show-cursor{cursor:default}
+
+.stage{position:fixed;inset:0;background:var(--stage);overflow:hidden;isolation:isolate}
+
+/* ---------- Hidden rotating brand mark (Holigram) ---------- */
+.backdrop{position:absolute;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.mark{
+  position:absolute;left:50%;top:46%;color:var(--mark);
+  width:135vmax;height:135vmax;translate:-50% -50%;
+  opacity:var(--mark-opacity);will-change:transform;
+  animation:spin 150s linear infinite;
+}
+.mark svg{width:100%;height:100%;display:block;fill:currentColor}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* faint ambient glow that drifts */
+.glow{position:absolute;width:74vmax;height:74vmax;left:50%;top:40%;translate:-50% -50%;
+  background:radial-gradient(circle, color-mix(in srgb, var(--active-accent) 30%, transparent), transparent 62%);
+  filter:blur(46px);opacity:.5;animation:breathe 16s var(--ease) infinite;mix-blend-mode:screen;
+  transition:background 1200ms var(--ease)}
+html[data-theme='light'] .glow{mix-blend-mode:multiply;opacity:.22}
+@keyframes breathe{0%,100%{transform:translate(-50%,-50%) scale(1)}50%{transform:translate(-50%,-54%) scale(1.12)}}
+
+/* film grain */
+.grain{position:absolute;inset:-50%;z-index:3;pointer-events:none;opacity:.05;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  animation:grain 1.2s steps(4) infinite}
+@keyframes grain{to{transform:translate(8%,5%)}}
+/* vignette */
+.vignette{position:absolute;inset:0;z-index:4;pointer-events:none;
+  background:radial-gradient(130% 100% at 50% 42%, transparent 56%, rgba(0,0,0,.42) 100%)}
+html[data-theme='light'] .vignette{background:radial-gradient(130% 100% at 50% 40%, transparent 54%, rgba(70,52,24,.20) 100%)}
+
+/* frost particles — subtle drifting sparkle */
+.particles{position:absolute;inset:0;z-index:6;pointer-events:none;overflow:hidden}
+.particle{position:absolute;border-radius:50%;background:radial-gradient(circle,var(--spark),transparent 70%);
+  opacity:0;will-change:transform,opacity;animation:floatUp linear infinite, twinkle ease-in-out infinite}
+@keyframes floatUp{from{transform:translateY(10vh)}to{transform:translateY(-52vh)}}
+@keyframes twinkle{0%,100%{opacity:0}50%{opacity:var(--tw,.5)}}
+
+/* ---------- Top presenter bar ---------- */
+.topbar{position:absolute;top:0;left:0;right:0;z-index:8;display:flex;justify-content:flex-start;
+  padding:clamp(15px,2.4vh,32px) clamp(18px,4.5vw,44px) 0;text-align:center;pointer-events:none}
+.presenter{display:flex;flex-direction:column;align-items:center;gap:5px;
+  padding:clamp(9px,1.2vh,14px) clamp(16px,2.6vw,28px) clamp(10px,1.3vh,15px);
+  background:color-mix(in srgb,var(--scrim) 70%,transparent);
+  -webkit-backdrop-filter:blur(18px) saturate(1.05);backdrop-filter:blur(18px) saturate(1.05);
+  border:1px solid var(--rule);border-radius:15px;
+  box-shadow:0 12px 34px -18px rgba(0,0,0,.5);
+  opacity:0;animation:fadeDown 1s var(--ease) .3s forwards}
+.presenter__label{font-size:clamp(9px,1.1vh,12px);letter-spacing:.34em;text-transform:uppercase;
+  color:var(--fg-faint);font-weight:500}
+.presenter__logo{height:clamp(34px,5.4vh,62px);width:auto;display:block;
+  filter:drop-shadow(0 2px 10px rgba(0,0,0,.35))}
+html[data-theme='light'] .presenter__logo{filter:none}
+/* text fallback wordmark when no logo image */
+.presenter__wordmark{font-family:var(--font-brand);font-size:clamp(20px,3.2vh,34px);
+  letter-spacing:.08em;color:var(--fg);font-weight:400}
+/* De Medley vector lockup */
+.demedley{display:flex;flex-direction:column;align-items:center;gap:5px;color:var(--fg)}
+.demedley__leaf{width:clamp(22px,3.4vh,38px);height:auto;display:block;
+  filter:drop-shadow(0 2px 9px rgba(0,0,0,.45))}
+html[data-theme='light'] .demedley__leaf{filter:drop-shadow(0 2px 6px rgba(0,0,0,.18))}
+.demedley__name{font-family:var(--font-display);font-weight:700;letter-spacing:.15em;
+  font-size:clamp(15px,2.4vh,25px);line-height:1;padding:4px 3px;
+  border-top:1.5px solid currentColor;border-bottom:1.5px solid currentColor}
+.demedley__name sup{font-size:.4em;vertical-align:.95em;font-weight:500;letter-spacing:0}
+.demedley__since{font-family:var(--font-display);font-style:italic;font-weight:400;
+  font-size:clamp(11px,1.55vh,16px);color:var(--fg-mute);letter-spacing:.02em}
+@keyframes fadeDown{from{opacity:0;transform:translateY(-12px)}to{opacity:1;transform:none}}
+
+/* ---------- Deck / slides ---------- */
+.deck{position:absolute;inset:0;z-index:5}
+.slide{position:absolute;inset:0;display:flex;flex-direction:column;
+  opacity:0;visibility:hidden;transition:opacity 1100ms var(--ease),visibility 0s linear 1100ms}
+.slide.is-active{opacity:1;visibility:visible;transition:opacity 1100ms var(--ease)}
+
+/* photo region (top, portrait) — Ken Burns with per-slide direction variety */
+.slide__photo{position:relative;flex:1 1 60%;overflow:hidden}
+.slide__photo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 38%;
+  transform:var(--kb-from,scale(1.06));transition:transform 0s;will-change:transform}
+.slide.is-active .slide__photo img{transform:var(--kb-to,scale(1.16) translate(-1%,-1.4%));
+  transition:transform calc(var(--dur-slide) + 1700ms) linear}
+.kb0{--kb-from:scale(1.05) translate(0,0);      --kb-to:scale(1.17) translate(-1.5%,-1.6%)}
+.kb1{--kb-from:scale(1.17) translate(1.5%,-1%); --kb-to:scale(1.05) translate(0,0)}
+.kb2{--kb-from:scale(1.07) translate(2.2%,0);   --kb-to:scale(1.17) translate(-2%,-1.2%)}
+.kb3{--kb-from:scale(1.07) translate(-2.2%,1%); --kb-to:scale(1.16) translate(2%,-1.6%)}
+/* fade photo bottom into the stage so caption sits seamlessly */
+.slide__photo::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(to bottom, transparent 40%, color-mix(in srgb,var(--scrim) 55%,transparent) 74%, var(--scrim) 99%)}
+
+/* cutout variant (transparent PNG floats with glow) */
+.slide--cutout .slide__photo{display:flex;align-items:center;justify-content:center}
+.slide--cutout .slide__photo img{position:relative;width:auto;height:auto;max-width:78%;max-height:80%;
+  object-fit:contain;transform:scale(.96);
+  filter:drop-shadow(0 30px 60px rgba(0,0,0,.55)) drop-shadow(0 0 60px color-mix(in srgb,var(--orange) 30%,transparent))}
+.slide--cutout.is-active .slide__photo img{transform:scale(1.02) translateY(-1%);
+  transition:transform calc(var(--dur-slide) + 1600ms) var(--ease);animation:bob 7s var(--ease) infinite}
+.slide--cutout .slide__photo::after{display:none}
+.slide--cutout .slide__photo::before{content:"";position:absolute;width:62%;aspect-ratio:1;border-radius:50%;
+  background:radial-gradient(circle,color-mix(in srgb,var(--orange) 34%,transparent),transparent 66%);
+  filter:blur(30px);top:42%;left:50%;translate:-50% -50%}
+@keyframes bob{0%,100%{translate:0 -1%}50%{translate:0 -3.4%}}
+
+/* caption region (bottom, portrait) */
+.slide__caption{flex:0 0 auto;position:relative;z-index:2;padding:0 clamp(26px,7vw,72px) clamp(44px,6.2vh,80px);
+  display:flex;flex-direction:column;align-items:flex-start;gap:clamp(8px,1.2vh,15px);
+  margin-top:-8vh}
+
+/* editorial top-meta: slide index + status badge */
+.topmeta{display:flex;align-items:center;gap:14px}
+.idx{font-family:var(--font-mono);font-size:clamp(11px,1.35vh,14px);letter-spacing:.1em;
+  color:var(--fg-faint);font-variant-numeric:tabular-nums}
+.idx i{font-style:normal;opacity:.45;margin:0 .35em}
+.idx b{color:var(--active-accent);font-weight:700;transition:color .8s var(--ease)}
+.badge{font-family:var(--font-mono);font-size:clamp(9px,1.05vh,11.5px);letter-spacing:.16em;text-transform:uppercase;
+  font-weight:600;padding:5px 11px;border-radius:6px;color:#fff;background:var(--active-accent);
+  box-shadow:0 5px 18px -5px var(--active-accent);transition:background .8s var(--ease)}
+html[data-theme='light'] .badge{color:#fff}
+
+.eyebrow{display:flex;align-items:center;gap:12px;font-size:clamp(10px,1.25vh,13px);
+  letter-spacing:.32em;text-transform:uppercase;color:var(--active-accent);font-weight:500}
+.eyebrow::before{content:"";width:26px;height:1.5px;background:var(--active-accent);display:inline-block;
+  transform:scaleX(0);transform-origin:left;transition:transform 650ms var(--ease) 380ms}
+.slide.is-active .eyebrow::before{transform:scaleX(1)}
+
+.name-mask{overflow:hidden;padding-block:.05em;margin-block:-.05em}
+.name{font-family:var(--font-display);font-weight:900;line-height:.94;letter-spacing:-.02em;
+  font-size:clamp(46px,9.2vh,118px);color:var(--fg);text-wrap:balance;transform:translateY(114%)}
+.slide.is-active .name{transform:translateY(0);transition:transform 1050ms var(--ease) 430ms}
+.name .reg{font-size:.34em;vertical-align:.85em;font-weight:500;margin-left:.04em}
+.name__aka{display:block;font-family:var(--font-display);font-style:italic;font-weight:400;
+  font-size:clamp(15px,2vh,24px);color:var(--fg-mute);letter-spacing:0;margin-top:.5em}
+
+/* genetics — lineage tree (the heart of the screen) */
+.genetics{display:flex;flex-direction:column;gap:10px}
+.genetics__label{font-size:clamp(9px,1.15vh,12px);letter-spacing:.3em;text-transform:uppercase;color:var(--fg-faint);font-weight:500}
+.tree{display:flex;align-items:center;gap:.5em;font-family:var(--font-display);
+  font-size:clamp(20px,3.4vh,43px);line-height:1.04;color:var(--fg)}
+.tree__parents{display:flex;flex-direction:column;gap:.28em;font-weight:500}
+.tree__p{white-space:nowrap}
+.tree__brace{width:.4em;height:1.85em;border:.085em solid var(--active-accent);border-left:0;
+  border-radius:0 .55em .55em 0;flex:none;transform:scaleX(0);transform-origin:left;transition:border-color .8s var(--ease)}
+.slide.is-active .tree__brace{transform:scaleX(1);transition:transform 600ms var(--ease) 740ms,border-color .8s var(--ease)}
+.tree__x{font-family:var(--font-body);font-weight:400;color:var(--active-accent);font-size:.9em;flex:none;
+  width:1.55em;height:1.55em;display:inline-flex;align-items:center;justify-content:center;
+  border:.05em solid color-mix(in srgb,var(--active-accent) 55%,transparent);border-radius:50%;
+  animation:xspin 28s linear infinite}
+@keyframes xspin{to{transform:rotate(360deg)}}
+.lineage{font-size:clamp(11px,1.5vh,15px);color:var(--fg-faint);line-height:1.45;max-width:36ch;font-weight:300}
+
+/* meta row: type chip + technical tag */
+.meta{display:flex;flex-wrap:wrap;gap:14px;align-items:center;margin-top:4px}
+.chip{display:inline-flex;align-items:center;gap:9px;padding:9px 17px;border-radius:100px;
+  background:var(--chip-bg);border:1px solid var(--rule);font-size:clamp(11px,1.45vh,15px);
+  font-weight:500;letter-spacing:.04em;color:var(--fg);backdrop-filter:blur(6px)}
+.chip__dot{width:9px;height:9px;border-radius:50%;background:var(--active-accent);
+  box-shadow:0 0 10px var(--active-accent);transition:background .8s var(--ease)}
+.tag{font-family:var(--font-mono);font-size:clamp(10px,1.25vh,13px);letter-spacing:.14em;
+  text-transform:uppercase;color:var(--fg-faint);font-weight:500;white-space:nowrap}
+
+/* caption entrance choreography */
+.topmeta,.eyebrow,.genetics,.meta{opacity:0;transform:translateY(24px)}
+.slide.is-active .topmeta,.slide.is-active .eyebrow,.slide.is-active .genetics,.slide.is-active .meta{
+  opacity:1;transform:none;transition:opacity 850ms var(--ease),transform 850ms var(--ease)}
+.slide.is-active .topmeta{transition-delay:200ms}
+.slide.is-active .eyebrow{transition-delay:300ms}
+.slide.is-active .genetics{transition-delay:600ms}
+.slide.is-active .meta{transition-delay:760ms}
+
+/* ---------- Progress ---------- */
+.progress{position:absolute;left:0;right:0;bottom:0;z-index:8;display:flex;flex-direction:column;align-items:center;gap:14px;padding-bottom:clamp(18px,2.6vh,30px)}
+.dots{display:flex;gap:10px}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--fg-faint);transition:width .5s var(--ease),background .8s var(--ease),opacity .5s;opacity:.5}
+.dot.is-active{width:30px;background:var(--active-accent);opacity:1}
+.bar{position:absolute;left:0;bottom:0;height:3px;width:0;background:var(--active-accent);
+  box-shadow:0 0 12px var(--active-accent)}
+
+/* ---------- Controls hint + buttons ---------- */
+.ui{position:absolute;top:0;right:0;z-index:9;display:flex;gap:8px;padding:18px;opacity:0;transition:opacity .4s}
+.stage.show-ui .ui{opacity:1}
+.ui button{width:40px;height:40px;border-radius:10px;border:1px solid var(--rule);
+  background:color-mix(in srgb,var(--scrim) 60%,transparent);color:var(--fg);cursor:pointer;
+  font-size:16px;display:grid;place-items:center;backdrop-filter:blur(8px);transition:background .2s}
+.ui button:hover{background:color-mix(in srgb,var(--accent) 22%,transparent)}
+.hint{position:absolute;bottom:14px;right:18px;z-index:8;font-size:11px;color:var(--fg-faint);
+  letter-spacing:.04em;opacity:0;transition:opacity .4s}
+.stage.show-ui .hint{opacity:.8}
+
+@media (prefers-reduced-motion: reduce){
+  .mark,.glow,.grain,.tree__x,.particle{animation:none}
+  .slide.is-active .slide__photo img{transform:scale(1.04);transition:none}
+  .name{transform:none}
+}
+
+/* ---------- Landscape adaptation ---------- */
+@media (min-aspect-ratio: 1/1){
+  .slide{flex-direction:row}
+  .slide__photo{flex:1 1 54%}
+  .slide__photo img{object-position:center 42%}
+  .slide__photo::after{background:linear-gradient(to right, transparent 42%, color-mix(in srgb,var(--scrim) 55%,transparent) 76%, var(--scrim) 99%)}
+  .slide--cutout .slide__photo::after{display:none}
+  .slide__caption{flex:1 1 46%;justify-content:center;margin-top:0;
+    padding:clamp(30px,5vw,90px);padding-right:clamp(40px,6vw,110px)}
+  .name{font-size:clamp(44px,9.4vw,116px)}
+  /* landscape: move presenter to top-left (over the photo) so it never overlaps the right-side caption */
+  .topbar{justify-content:flex-start;padding-left:clamp(26px,4vw,64px)}
+}
+</style>
+</head>
+<body>
+<div class="stage" id="stage">
+
+  <!-- Oversized, slowly rotating Holigram brand mark as a faint background watermark. -->
+  <div class="backdrop" aria-hidden="true">
+    <div class="glow"></div>
+    <div class="mark mark--1"><svg viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg"><circle cx="150" cy="257.1" r="8.28"/><path d="M258.09,127.88c.02,1.64-.13,3.37-.5,5.18-.63,3.05-1.78,5.65-3.12,7.83-4.49,7.52-12.71,12.56-22.11,12.56-.2,0-.4-.01-.6-.02-2,.1-4.03,.14-6.12,.23-20.81,.93-50.5,8.22-54.17,22.22-.03,.1-.06,.23-.1,.38-.07,.63-.16,1.26-.28,1.87-.09,1.2-.02,2.73,.54,4.32,3.74,10.66,25.32,12.86,28.23,13.15,6.38,.65,9.87,0,15.5,2.5,2.32,1.03,6.38,2.91,9.52,7.27l.07,.09c1.14,1.49,2.05,3.17,2.67,4.98,.93,2.51,1.54,5.74,.78,9.37-.54,2.55-1.66,4.83-3.16,6.77-3.22,4.46-8.46,7.37-14.38,7.37-3.46,0-6.69-1-9.41-2.71-4.93-2.84-7.26-7.59-12.67-15.35-7.89-11.32-17.39-24.95-25.92-23.48-2.11,.36-3.6,1.62-4.47,2.34-5.59,4.69-5.24,13.39-5.09,17.07,.23,5.54,1.79,13.04,2.29,20.28,.06,.8,.16,2.69-.98,4.34-.86,1.24-2.5,2.45-4.61,2.45-2.11,0-3.75-1.21-4.61-2.45-1.14-1.65-1.04-3.54-.98-4.34,.5-7.24,2.06-14.73,2.29-20.28,.15-3.68,.51-12.38-5.09-17.07-.87-.73-2.36-1.98-4.47-2.34-8.53-1.47-18.03,12.15-25.92,23.48-5.41,7.76-7.74,12.51-12.67,15.35-2.73,1.71-5.95,2.71-9.41,2.71-5.92,0-11.16-2.91-14.38-7.37-1.5-1.94-2.62-4.21-3.16-6.77-.76-3.62-.15-6.86,.78-9.37,.62-1.81,1.53-3.49,2.67-4.98l.07-.09c3.14-4.36,7.21-6.25,9.52-7.27,5.64-2.5,9.12-1.86,15.5-2.5,2.91-.3,24.49-2.49,28.23-13.15,.56-1.59,.63-3.12,.54-4.32-.12-.62-.22-1.24-.28-1.87-.04-.16-.07-.28-.1-.38-3.68-14-33.36-21.29-54.17-22.22-2.09-.09-4.12-.12-6.12-.23-.2,0-.4,.02-.6,.02-9.4,0-17.62-5.04-22.11-12.56-1.34-2.18-2.49-4.78-3.12-7.83-.38-1.81-.52-3.54-.5-5.18,0-.06,0-.11,0-.17,0-13.83,10.91-25.12,24.6-25.72,.31-.02,.62-.04,.93-.05,9.26-.26,15.67,4.66,17.48,6.09,6.72,5.33,6.74,10.39,11.71,19.41,9.35,16.98,27.22,31.69,39.06,28.81,2.26-.55,3.77-1.7,4.14-1.98,7.64-5.75,5.08-26.03,5.08-26.03-1.99-15.88-4.26-34.06-14.92-54.85-2.05-4-5.45-10.12-4.49-17.8,1.15-9.24,7.9-15.03,8.34-15.4,.08-.07,.19-.16,.32-.26,.75-.6,4.18-3.28,9.45-4.63,5.94-1.52,10.91-.48,12.79,0,5.26,1.34,8.7,4.03,9.45,4.63,.13,.11,.24,.19,.32,.26,.44,.37,7.19,6.15,8.34,15.4,.96,7.68-2.44,13.8-4.49,17.8-10.65,20.79-12.93,38.98-14.92,54.85,0,0-2.56,20.29,5.08,26.03,.37,.28,1.88,1.43,4.14,1.98,11.84,2.88,29.71-11.83,39.06-28.81,4.97-9.02,4.99-14.08,11.71-19.41,1.81-1.44,8.23-6.36,17.48-6.09,.31,0,.62,.03,.93,.05,13.69,.6,24.6,11.88,24.6,25.72,0,.06,0,.11,0,.17Z"/></svg></div>
+  </div>
+
+  <!-- Coffeeshop presenter (swap in the shop's own logo) -->
+  <div class="topbar">
+    <div class="presenter" id="presenter">
+      <span class="presenter__label" id="presenterLabel">Geserveerd door</span>
+      <!-- De Medley — theme-adaptive vector lockup (leaf stays green, text = currentColor).
+           Replaced by an <img> if CONFIG.shopLogo points to a raster file. -->
+      <div class="demedley" id="shopLockup">
+        <svg class="demedley__leaf" viewBox="0 0 120 120" aria-hidden="true">
+          <g fill="#2f8a34">
+            <g transform="translate(60 104)">
+              <path d="M0 0C7 -24 7 -60 0 -100C-7 -60 -7 -24 0 0Z" transform="rotate(0) scale(1,1)"/>
+              <path d="M0 0C7 -24 7 -60 0 -100C-7 -60 -7 -24 0 0Z" transform="rotate(26) scale(.96,.9)"/>
+              <path d="M0 0C7 -24 7 -60 0 -100C-7 -60 -7 -24 0 0Z" transform="rotate(-26) scale(.96,.9)"/>
+              <path d="M0 0C7 -24 7 -60 0 -100C-7 -60 -7 -24 0 0Z" transform="rotate(53) scale(.85,.64)"/>
+              <path d="M0 0C7 -24 7 -60 0 -100C-7 -60 -7 -24 0 0Z" transform="rotate(-53) scale(.85,.64)"/>
+              <path d="M0 0C7 -24 7 -60 0 -100C-7 -60 -7 -24 0 0Z" transform="rotate(78) scale(.7,.4)"/>
+              <path d="M0 0C7 -24 7 -60 0 -100C-7 -60 -7 -24 0 0Z" transform="rotate(-78) scale(.7,.4)"/>
+            </g>
+            <path d="M57.6 104 L60 118 L62.4 104 Z"/>
+          </g>
+        </svg>
+        <div class="demedley__name">DE&nbsp;MEDLEY<sup>®</sup></div>
+        <div class="demedley__since">since 2003</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="deck" id="deck" aria-live="polite"></div>
+
+  <div class="grain" aria-hidden="true"></div>
+  <div class="vignette" aria-hidden="true"></div>
+  <div class="particles" id="particles" aria-hidden="true"></div>
+
+  <div class="progress">
+    <div class="dots" id="dots"></div>
+  </div>
+  <div class="bar" id="bar"></div>
+
+  <div class="ui" id="ui">
+    <button data-act="prev" title="Vorige (←)">‹</button>
+    <button data-act="playpause" id="ppBtn" title="Pauze (spatie)">॥</button>
+    <button data-act="next" title="Volgende (→)">›</button>
+    <button data-act="theme" title="Thema (T)">◐</button>
+    <button data-act="fs" title="Volledig scherm (F)">⛶</button>
+  </div>
+  <div class="hint">← →&nbsp; spatie&nbsp; F&nbsp; T</div>
+</div>
+
+<script>
+/* =================================================================
+   CONFIG — quick knobs
+   ================================================================= */
+const CONFIG = {
+  slideDuration: 9000,      // ms per strain
+  startTheme: 'dark',       // 'dark' | 'light'
+  showThc: false,           // THC% chip
+  showTerpenes: false,      // dominant terpenes line
+  showLineage: false,       // deep-lineage fine print under the tree (off = cleaner)
+  shopName: 'DE MEDLEY',    // presenter wordmark (used if no logo image)
+  shopLogo: '',             // set to a raster path (e.g. 'assets/brand/de-medley.png') to use the exact original instead of the vector lockup
+  presenterLabel: 'Geserveerd door',
+  eyebrow: 'Wietsoort',     // small label above the name ('' to hide)
+  metaTag: 'Indoor · NL',   // small technical tag in the meta row ('' to hide)
+  strainAccents: true,      // tint accent colour per strain
+  particles: true,          // drifting frost sparkles
+  shuffle: false,
+};
+
+/* =================================================================
+   STRAINS — edit / reorder / add here. cross = [parentA, parentB].
+   photo: path under assets/photos/. cutout:true for transparent PNG.
+   ================================================================= */
+const STRAINS = [
+  {
+    name: 'Vanilla Noir', type: 'Indica', typeLabel: 'Indica-dominant',
+    cross: ['Oreoz', 'Vanilla White'],
+    lineage: 'Oreoz (Cookies & Cream × Secret Weapon) × Vanilla White (White Widow pheno)',
+    thc: '26,18%', terpenes: 'Nerolidol · Caryofylleen · Cymeen',
+    accent: '#9B79C2', badge: 'Nieuw',
+    photo: 'assets/photos/vanilla-noir.jpg',
+  },
+  {
+    name: 'Sour Melon', type: 'Indica', typeLabel: 'Hybride · Indica-dominant',
+    cross: ['KG Melon Cut', 'KG Sour D'],
+    lineage: 'KG Melon Cut × KG Sour D Bx (Melon × Sour Diesel)',
+    thc: '24,69%', terpenes: 'Cymeen · Caryofylleen · Nerolidol',
+    accent: '#6FAE5E',
+    photo: 'assets/photos/sour-melon.jpg',
+  },
+  {
+    name: 'Amnesia Mac Ganja', reg: true, type: 'Sativa', typeLabel: 'Hybride · Sativa-dominant',
+    cross: ['Amnesia', 'Mac Ganja'],
+    lineage: 'Amnesia × Mac Ganja — gepatenteerd, i.s.m. Kosbor Maastricht',
+    thc: '24,49%', terpenes: 'Terpinoleen · Valenceen · Caryofylleen',
+    accent: '#E5631E',
+    photo: 'assets/photos/amg.jpg',
+  },
+  {
+    name: 'Skunk × Animal Mints', aka: 'voorheen “Pink Drip”', type: 'Indica', typeLabel: 'Indica-dominant',
+    cross: ['Skunk', 'Animal Mints'],
+    lineage: 'Old-skool Skunk × Animal Mints (Animal Cookies × Sin Mint Cookies)',
+    thc: '27,72%', terpenes: 'Cymeen · Fenchone',
+    accent: '#C56E9A',
+    photo: 'assets/photos/skunk-animal-mints.jpg',
+  },
+  {
+    name: 'Sub Zero', type: 'Indica', typeLabel: 'Hybride · 65% Indica',
+    cross: ['Oreoz', 'Super Boof'],
+    lineage: 'Oreoz (Cookies & Cream × Secret Weapon) × Super Boof (Black Cherry Punch × Tropicana Cookies)',
+    thc: '24,88%', terpenes: 'Cymeen · Myrceen · Caryofylleen',
+    accent: '#6E93C7',
+    photo: 'assets/photos/sub-zero.jpg',
+  },
+];
+
+/* =================================================================
+   Engine
+   ================================================================= */
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const deck = document.getElementById('deck');
+const dotsEl = document.getElementById('dots');
+const bar = document.getElementById('bar');
+const stage = document.getElementById('stage');
+const ppBtn = document.getElementById('ppBtn');
+const root = document.documentElement;
+
+// URL overrides — handy for the kiosk and for testing.
+//   ?theme=light  ?i=4 (start on 4th)  ?thc=1  ?terps=1  ?dur=9000
+const qs = new URLSearchParams(location.search);
+if(qs.has('theme')) CONFIG.startTheme = qs.get('theme')==='light' ? 'light' : 'dark';
+if(qs.has('thc'))   CONFIG.showThc = /^(1|true|yes)$/i.test(qs.get('thc'));
+if(qs.has('terps')) CONFIG.showTerpenes = /^(1|true|yes)$/i.test(qs.get('terps'));
+if(qs.has('dur'))   CONFIG.slideDuration = Math.max(2000, +qs.get('dur')||CONFIG.slideDuration);
+
+let order = STRAINS.map((_,i)=>i);
+if (CONFIG.shuffle) for(let i=order.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[order[i],order[j]]=[order[j],order[i]];}
+
+root.setAttribute('data-theme', CONFIG.startTheme);
+root.style.setProperty('--dur-slide', CONFIG.slideDuration+'ms');
+
+// presenter
+document.getElementById('presenterLabel').textContent = CONFIG.presenterLabel;
+if (CONFIG.shopLogo){
+  const img = document.createElement('img');
+  img.className='presenter__logo'; img.src=CONFIG.shopLogo; img.alt=CONFIG.shopName;
+  document.getElementById('shopLockup').replaceWith(img);
+}
+
+// build slides
+order.forEach((si, pos)=>{
+  const s = STRAINS[si];
+  const slide = document.createElement('section');
+  slide.className = 'slide' + (s.cutout ? ' slide--cutout' : '');
+  const accent = (CONFIG.strainAccents && s.accent) ? s.accent : null;
+  const lineage = (CONFIG.showLineage && s.lineage) ? `<div class="lineage">${esc(s.lineage)}</div>` : '';
+  const terps = (CONFIG.showTerpenes && s.terpenes) ? `<div class="lineage">${esc(s.terpenes)}</div>` : '';
+  const aka = s.aka ? `<span class="name__aka">${esc(s.aka)}</span>` : '';
+  const reg = s.reg ? `<span class="reg">®</span>` : '';
+  const badge = s.badge ? `<span class="badge">${esc(s.badge)}</span>` : '';
+  const tag = CONFIG.metaTag ? `<span class="tag">${esc(CONFIG.metaTag)}</span>` : '';
+  const thc = (CONFIG.showThc && s.thc) ? `<span class="tag">THC ${esc(s.thc)}</span>` : '';
+  const num = String(pos+1).padStart(2,'0'), tot = String(order.length).padStart(2,'0');
+  slide.innerHTML = `
+    <div class="slide__photo"><img class="kb${pos%4}" src="${esc(s.photo)}" alt="${esc(s.name)}" loading="eager" decoding="async"></div>
+    <div class="slide__caption">
+      <div class="topmeta"><span class="idx"><b>${num}</b><i>/</i>${tot}</span>${badge}</div>
+      ${CONFIG.eyebrow ? `<div class="eyebrow">${esc(CONFIG.eyebrow)}</div>` : ''}
+      <div class="name-mask"><h1 class="name">${esc(s.name)}${reg}${aka}</h1></div>
+      ${s.hideCross ? '' : `<div class="genetics">
+        <div class="genetics__label">Genetica · kruising</div>
+        <div class="tree">
+          <div class="tree__parents"><span class="tree__p">${esc(s.cross[0])}</span><span class="tree__p">${esc(s.cross[1])}</span></div>
+          <span class="tree__brace"></span>
+          <span class="tree__x">✕</span>
+        </div>
+        ${lineage}${terps}
+      </div>`}
+      <div class="meta">
+        <span class="chip"><span class="chip__dot"></span>${esc(s.typeLabel||s.type)}</span>
+        ${tag}${thc}
+      </div>
+    </div>`;
+  if(accent){ slide.style.setProperty('--active-accent', accent); slide.dataset.accent = accent; }
+  deck.appendChild(slide);
+
+  const dot = document.createElement('span');
+  dot.className='dot'; dotsEl.appendChild(dot);
+});
+
+const slides = [...deck.children];
+const dots = [...dotsEl.children];
+
+// preload all photos
+STRAINS.forEach(s=>{ const i=new Image(); i.src=s.photo; });
+
+// frost particles (subtle drifting sparkle)
+if(CONFIG.particles){
+  const pl = document.getElementById('particles');
+  for(let i=0;i<18;i++){
+    const p=document.createElement('span'); p.className='particle';
+    const sz=(1+Math.random()*2.4).toFixed(1);
+    p.style.left=(Math.random()*100).toFixed(2)+'%';
+    p.style.top=(55+Math.random()*45).toFixed(1)+'%';
+    p.style.width=p.style.height=sz+'px';
+    const d1=(9+Math.random()*12).toFixed(1), d2=(3+Math.random()*4).toFixed(1);
+    p.style.setProperty('--tw',(.3+Math.random()*.5).toFixed(2));
+    p.style.animationDuration=`${d1}s, ${d2}s`;
+    p.style.animationDelay=`${(-Math.random()*d1).toFixed(1)}s, ${(-Math.random()*d2).toFixed(1)}s`;
+    pl.appendChild(p);
+  }
+}
+
+let idx = 0, timer = null, paused = false;
+
+function restartBar(){
+  bar.style.transition='none'; bar.style.width='0%';
+  // force reflow
+  void bar.offsetWidth;
+  if(!paused){ bar.style.transition=`width ${CONFIG.slideDuration}ms linear`; bar.style.width='100%'; }
+}
+
+function show(n){
+  idx = (n + slides.length) % slides.length;
+  slides.forEach((sl,i)=> sl.classList.toggle('is-active', i===idx));
+  dots.forEach((d,i)=> d.classList.toggle('is-active', i===idx));
+  const ac = slides[idx].dataset.accent;          // tint global glow / bar / dots to the strain
+  if(ac) root.style.setProperty('--active-accent', ac);
+  restartBar();
+  schedule();
+}
+function schedule(){
+  clearTimeout(timer);
+  if(!paused) timer = setTimeout(()=> show(idx+1), CONFIG.slideDuration);
+}
+function next(){ show(idx+1); }
+function prev(){ show(idx-1); }
+function setPaused(p){
+  paused = p;
+  ppBtn.textContent = p ? '▶' : '॥';
+  if(p){ clearTimeout(timer);
+    const w = getComputedStyle(bar).width; bar.style.transition='none'; bar.style.width=w;
+  } else { restartBar(); schedule(); }
+}
+function toggleTheme(){
+  root.setAttribute('data-theme', root.getAttribute('data-theme')==='dark' ? 'light' : 'dark');
+}
+function toggleFs(){
+  if(!document.fullscreenElement) document.documentElement.requestFullscreen?.();
+  else document.exitFullscreen?.();
+}
+
+// controls
+document.getElementById('ui').addEventListener('click', e=>{
+  const a = e.target.closest('button')?.dataset.act; if(!a) return;
+  ({prev,next,playpause:()=>setPaused(!paused),theme:toggleTheme,fs:toggleFs})[a]?.();
+});
+addEventListener('keydown', e=>{
+  if(e.key==='ArrowRight'||e.key==='PageDown'){ next(); }
+  else if(e.key==='ArrowLeft'||e.key==='PageUp'){ prev(); }
+  else if(e.key===' '){ e.preventDefault(); setPaused(!paused); }
+  else if(e.key.toLowerCase()==='f'){ toggleFs(); }
+  else if(e.key.toLowerCase()==='t'){ toggleTheme(); }
+});
+// tap left/right third to navigate (touch screens)
+stage.addEventListener('click', e=>{
+  if(e.target.closest('.ui')||e.target.closest('.topbar')) return;
+  const x = e.clientX / innerWidth;
+  if(x>0.66) next(); else if(x<0.34) prev(); else setPaused(!paused);
+});
+
+// reveal cursor + UI on activity, then hide
+let hideT;
+function activity(){
+  document.body.classList.add('show-cursor'); stage.classList.add('show-ui');
+  clearTimeout(hideT);
+  hideT = setTimeout(()=>{ document.body.classList.remove('show-cursor'); stage.classList.remove('show-ui'); }, 2600);
+}
+['mousemove','touchstart','keydown'].forEach(ev=> addEventListener(ev, activity, {passive:true}));
+
+// pause when tab hidden
+document.addEventListener('visibilitychange', ()=>{
+  if(document.hidden){ clearTimeout(timer); }
+  else if(!paused){ restartBar(); schedule(); }
+});
+
+// go
+const startAt = Math.min(slides.length-1, Math.max(0,(parseInt(qs.get('i'))||1)-1));
+show(startAt);
+activity();
+</script>
+</body>
+</html>

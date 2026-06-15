@@ -116,6 +116,7 @@ html[data-theme='light'] .vignette{background:radial-gradient(130% 100% at 50% 4
   opacity:0;animation:fadeDown 1s var(--ease) .3s forwards}
 .presenter__label{font-size:clamp(9px,1.1vh,12px);letter-spacing:.34em;text-transform:uppercase;
   color:var(--fg-faint);font-weight:500}
+.presenter__label:empty{display:none}
 .presenter__logo{height:clamp(34px,5.4vh,62px);width:auto;display:block;
   filter:drop-shadow(0 2px 10px rgba(0,0,0,.35))}
 html[data-theme='light'] .presenter__logo{filter:none}
@@ -124,11 +125,10 @@ html[data-theme='light'] .presenter__logo{filter:none}
   letter-spacing:.08em;color:var(--fg);font-weight:400}
 /* De Medley vector lockup */
 .demedley{display:flex;flex-direction:column;align-items:center;gap:5px;color:var(--fg)}
-.demedley__leaf{width:clamp(22px,3.4vh,38px);height:auto;display:block;
-  filter:drop-shadow(0 2px 9px rgba(0,0,0,.45))}
-html[data-theme='light'] .demedley__leaf{filter:drop-shadow(0 2px 6px rgba(0,0,0,.18))}
+.demedley__top{font-family:var(--font-display);font-weight:400;letter-spacing:.01em;
+  font-size:clamp(13px,1.95vh,20px);line-height:1;color:var(--fg)}
 .demedley__name{font-family:var(--font-display);font-weight:700;letter-spacing:.15em;
-  font-size:clamp(15px,2.4vh,25px);line-height:1;padding:4px 3px;
+  font-size:clamp(15px,2.4vh,25px);line-height:1;padding:5px 6px;
   border-top:1.5px solid currentColor;border-bottom:1.5px solid currentColor}
 .demedley__name sup{font-size:.4em;vertical-align:.95em;font-weight:500;letter-spacing:0}
 .demedley__since{font-family:var(--font-display);font-style:italic;font-weight:400;
@@ -290,20 +290,7 @@ html[data-theme='light'] .badge{color:#fff}
       <!-- De Medley — theme-adaptive vector lockup (leaf stays green, text = currentColor).
            Replaced by an <img> if CONFIG.shopLogo points to a raster file. -->
       <div class="demedley" id="shopLockup">
-        <svg class="demedley__leaf" viewBox="0 0 120 120" aria-hidden="true">
-          <g fill="#2f8a34">
-            <g transform="translate(60 104)">
-              <path d="M0 0C7 -24 7 -60 0 -100C-7 -60 -7 -24 0 0Z" transform="rotate(0) scale(1,1)"/>
-              <path d="M0 0C7 -24 7 -60 0 -100C-7 -60 -7 -24 0 0Z" transform="rotate(26) scale(.96,.9)"/>
-              <path d="M0 0C7 -24 7 -60 0 -100C-7 -60 -7 -24 0 0Z" transform="rotate(-26) scale(.96,.9)"/>
-              <path d="M0 0C7 -24 7 -60 0 -100C-7 -60 -7 -24 0 0Z" transform="rotate(53) scale(.85,.64)"/>
-              <path d="M0 0C7 -24 7 -60 0 -100C-7 -60 -7 -24 0 0Z" transform="rotate(-53) scale(.85,.64)"/>
-              <path d="M0 0C7 -24 7 -60 0 -100C-7 -60 -7 -24 0 0Z" transform="rotate(78) scale(.7,.4)"/>
-              <path d="M0 0C7 -24 7 -60 0 -100C-7 -60 -7 -24 0 0Z" transform="rotate(-78) scale(.7,.4)"/>
-            </g>
-            <path d="M57.6 104 L60 118 L62.4 104 Z"/>
-          </g>
-        </svg>
+        <div class="demedley__top">Coffeeshop</div>
         <div class="demedley__name">DE&nbsp;MEDLEY<sup>®</sup></div>
         <div class="demedley__since">since 2003</div>
       </div>
@@ -341,9 +328,9 @@ const CONFIG = {
   showThc: false,           // THC% chip
   showTerpenes: false,      // dominant terpenes line
   showLineage: false,       // deep-lineage fine print under the tree (off = cleaner)
-  shopName: 'DE MEDLEY',    // presenter wordmark (used if no logo image)
+  shopName: 'Coffeeshop De Medley', // presenter name / alt text
   shopLogo: '',             // set to a raster path (e.g. 'assets/brand/de-medley.png') to use the exact original instead of the vector lockup
-  presenterLabel: 'Geserveerd door',
+  presenterLabel: '',       // small "served by" eyebrow above the logo ('' = hidden)
   eyebrow: 'Wietsoort',     // small label above the name ('' to hide)
   metaTag: 'Indoor · NL',   // small technical tag in the meta row ('' to hide)
   strainAccents: true,      // tint accent colour per strain
